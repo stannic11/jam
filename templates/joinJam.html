@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>join jam</title>
+        <style>
+            *{
+                font-family: monospace;
+                color: white;
+                letter-spacing: 5px;
+                word-spacing: 10px;
+                font-size: 20px;
+            }
+            html, body{
+                display: flex;
+                flex-direction: column;
+            }
+            body{
+                background-color: #eb796e;
+            }
+            div{
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, 120%);
+            }
+            a.button, button{
+                text-align: center;
+                -webkit-appearance: button;
+                -moz-appearance: button;
+                appearance: button;
+                text-decoration: none;
+                padding: 18px 40px;
+                background: #ffb700;
+                outline: none;
+                border: 2px solid #ffb700;
+                font-weight: bold;
+                cursor: pointer;
+                border-radius: 8px;
+                opacity: 70;
+                display: block;
+                width: 200px;
+                margin: 20px;
+            }
+            a.button:hover, button:hover{
+                background: #eb796e;
+            }
+            root{
+                display: grid;
+                grid-template-columns: 75% 25%;
+                height:100%;
+                margin-top: 20px;
+            }
+            .container{
+                width: calc(100%-5px);
+                height: 100%;
+                padding-right: 5px;
+                display: flex;
+                flex-wrap: wrap;
+                align-content: flex-start;
+            }
+            .participant{
+                margin-bottom: 10px;
+                margin-right: 5px;
+                display: grid;
+                grid-template-rows: auto 20px;
+                
+            }
+            .participant div{
+                text-align: center;
+            }
+            .participant div video{
+                background-color: white;
+                border: none;
+                border-radius: 8px;
+                transform: translate(87%, -160%)
+            }
+            .participant div video:not(.trackZoomed){
+                width: 500px;
+                height: 500px;
+            }
+            #labelname{
+                color: #ffb700;
+                padding: 2px;
+                transform: translate(1150%, 1000%);
+            }
+            .participantZoomed{
+                width: 100%;
+                height: calc(100%-5px);
+                grid-template-rows: auto 30px;
+            }
+            .trackZoomed{
+                width: 100%;
+                height: 100%;
+            }
+            participantZoomed .label{
+                margin-top: 8px;
+            }
+            h1{
+                margin-left: 10px;
+                font-size: 30px;
+                width: 100%;
+                text-align: center;
+            }
+            form{
+                margin-left: 10px;
+                width: 100%;
+                display: flex;
+                align-items: center;
+            }
+            input{
+                border: none;
+                height: 40px;
+                margin-left: 20px;
+                color: black;
+                padding-left: 10px;
+            }
+            #join_leave{
+                height: 60px;
+                width: 300px;
+                margin-left: 700px;
+            }
+            iframe{
+                width: 500px;
+                height: 500px;
+                margin: 20px;
+                border: none;
+                border-radius: 8px;
+            }
+            p{
+                margin: 1px;
+            }
+            #centerbtn{
+                transform:translate(295%,-500%);
+            }
+            #centerbtn{
+                transform:translate(290%,-800%);
+            }
+            #countdown{
+                transform:translate(-30%,100%);
+                font-size: 30px;
+            }
+            #finish{
+                transform: translate(290%,-500%);
+            }
+            #score{
+                font-size:20px;
+                transform:translate(-50%,1100%);
+            }
+        </style>
+    </head>
+    <body>
+        <h1 id="h1">join existing jam</h1>
+        <hr color=white width=95%>
+        <form>
+            <label for="username">Name: </label>
+            <input type="text" name="username" id="username">
+            <button id="join_leave">join</button>
+        </form>
+        <p id="count">waiting to connect</p>
+        <iframe id="vid" src=https://www.youtube.com/embed/c6l8oS4K10k></iframe>
+        <button id="centerbtn", onclick="countdown()">start</button>
+        <div id="countdown"></div>
+        <button id="finish" onclick=score()>finish</button>
+        <div id="score"></div>
+        <div id="root">
+            
+            <div id="local" class="participant"><div></div><div id="labelname">me</div></div>
+            <!-- more participants will be added dynamically here -->
+        </div>
+        <script src="//media.twiliocdn.com/sdk/js/video/releases/2.3.0/twilio-video.min.js"></script>
+        <script>
+            
+            const root = document.getElementById('root');
+            const usernameInput = document.getElementById('username');
+            const button = document.getElementById('join_leave');
+            const container = document.getElementById('container');
+            const count = document.getElementById('count');
+            const h1 = document.getElementById('h1');
+            let connected = false;
+            let room;
+            let screenTrack;
+
+            function addLocalVideo() {
+                Twilio.Video.createLocalVideoTrack().then(track => {
+                    let video = document.getElementById('local').firstChild;
+                    let trackElement = track.attach();
+                    trackElement.addEventListener('click', () => { zoomTrack(trackElement); });
+                    video.appendChild(trackElement);
+                });
+            };
+            
+            function connectButtonHandler(event) {
+                event.preventDefault();
+                if (!connected) {
+                    let username = usernameInput.value;
+                    if (!username) {
+                        alert('please enter your name before connecting');
+                        return;
+                    }
+                    button.disabled = true;
+                    button.innerHTML = 'connecting...';
+                    connect(username).then(() => {
+                        button.innerHTML = 'leave';
+                        button.disabled = false;
+                        var name=document.getElementById("labelname");
+                        name.innerHTML=username;
+                        h1.innerHTML='jam on!';
+                    }).catch(() => {
+                        alert('connection failed');
+                        button.innerHTML = 'join';
+                        button.disabled = false;
+                        
+                    });
+                }
+                else {
+                    disconnect();
+                    button.innerHTML = 'join';
+                    connected = false;
+                }
+            };
+
+            function connect(username) {
+                let promise = new Promise((resolve, reject) => {
+                    // get a token from the back end
+                    let data;
+                    fetch('/login', {
+                        method: 'POST',
+                        body: JSON.stringify({'username': username})
+                    }).then(res => res.json()).then(_data => {
+                        // join video call
+                        data = _data;
+                        return Twilio.Video.connect(data.token);
+                    }).then(_room => {
+                        room = _room;
+                        room.participants.forEach(participantConnected);
+                        room.on('participantConnected', participantConnected);
+                        room.on('participantDisconnected', participantDisconnected);
+                        connected = true;
+                        updateParticipantCount();
+                        resolve();
+                    }).catch(e => {
+                        console.log(e);
+                        reject();
+                    });
+        });
+                return promise;
+            };
+
+            function updateParticipantCount() {
+                if (!connected)
+                    count.innerHTML = '';
+                else
+                    count.innerHTML = (room.participants.size + 1) + ' participants online';
+            };
+            
+            function participantConnected(participant) {
+                let participantDiv = document.createElement('div');
+                participantDiv.setAttribute('id', participant.sid);
+                participantDiv.setAttribute('class', 'participant');
+
+                let tracksDiv = document.createElement('div');
+                if(tracksDiv!=null){
+                    participantDiv.appendChild(tracksDiv);
+                };
+                
+                
+                let labelDiv = document.createElement('div');
+                labelDiv.setAttribute('class', 'label');
+                labelDiv.innerHTML = participant.identity;
+                if(labelDiv!=null){
+                    
+                    participantDiv.appendChild(labelDiv);
+                };
+                
+                
+                if(container!=null){
+                    container.appendChild(participantDiv);
+                };
+                
+                
+                participant.tracks.forEach(publication => {
+                    if (publication.isSubscribed){
+                        trackSubscribed(tracksDiv, publication.track);
+                    };
+                });
+                participant.on('trackSubscribed', track => trackSubscribed(tracksDiv, track));
+                participant.on('trackUnsubscribed', trackUnsubscribed);
+                
+                updateParticipantCount();
+            };
+            
+            function participantDisconnected(participant) {
+                if(document.getElementById(participant.sid)!=null){
+                    document.getElementById(participant.sid).remove();
+                };
+                updateParticipantCount();
+            };
+
+            function trackSubscribed(div, track) {
+                let trackElement = track.attach();
+                trackElement.addEventListener('click', () => { zoomTrack(trackElement); });
+                div.appendChild(trackElement);
+            };
+
+            function trackUnsubscribed(track) {
+        track.detach().forEach(element => {
+            if (element.classList.contains('participantZoomed')) {
+                zoomTrack(element);
+            }
+            element.remove();
+        });
+            };
+            
+            function disconnect() {
+                room.disconnect();
+                if(container!=null){
+                    while (container.lastChild.id != 'local'){}
+                        container.removeChild(container.lastChild);
+                };
+                button.innerHTML = 'join';
+                
+                connected = false;
+                updateParticipantCount();
+            };
+            
+            function zoomTrack(trackElement) {
+                if (!trackElement.classList.contains('trackZoomed')) {
+                    // zoom in
+                    container.childNodes.forEach(participant => {
+                        if (participant.classList && participant.classList.contains('participant')) {
+                            let zoomed = false;
+                            participant.childNodes[0].childNodes.forEach(track => {
+                                if (track === trackElement) {
+                                    track.classList.add('trackZoomed');
+                                    zoomed = true;
+                                };
+                            });
+                            if (zoomed) {
+                                participant.classList.add('participantZoomed');
+                            }
+                            
+                        }
+                    });
+                }
+                else {
+                    // zoom out
+                    container.childNodes.forEach(participant => {
+                        if (participant.classList && participant.classList.contains('participant')) {
+                            participant.childNodes[0].childNodes.forEach(track => {
+                                if (track === trackElement) {
+                                    track.classList.remove('trackZoomed');
+                                };
+                            });
+                            participant.classList.remove('participantZoomed')
+                            participant.classList.remove('participantHidden')
+                        }
+                    });
+                }
+            };
+
+            addLocalVideo();
+            button.addEventListener('click', connectButtonHandler);
+            
+            function countdown(){
+                var remainingSeconds = 3;
+                var countdownElement=document.getElementById('countdown');
+                var startbtn=document.getElementById('centerbtn');
+                var vid=document.getElementById('vid');
+                countdownElement.innerHTML = remainingSeconds;
+                var interval = setInterval(function() {
+
+                    countdownElement.innerHTML = --remainingSeconds;
+
+                    if (remainingSeconds === 0) {
+                        countdownElement.innerHTML='';
+                        clearInterval(interval);
+                        startbtn.style.visibility="hidden";
+                        vid.src+='?autoplay=1';
+                        contentElement.style.display = '';
+                    }
+                },1000);
+            };
+            function score(){
+                    var scoreprint=document.getElementById('score');
+                    scoreprint.innerHTML='your score: '+Math.floor(Math.random()*(90-40)+30)+'%';
+            };
+            
+        </script>
+    </body>
+</html>

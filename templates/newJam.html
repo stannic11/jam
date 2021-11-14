@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>new jam</title>
+        <style>
+            *{
+                font-family: monospace;
+                color: white;
+                letter-spacing: 5px;
+                word-spacing: 10px;
+                font-size: 20px;
+            }
+            body{
+                background-color: #eb796e;
+            }
+            h1{
+                margin-left: 10px;
+                font-size: 30px;
+                width: 100%;
+                text-align: center;
+            }
+            select, a{
+                text-align: center;
+                -webkit-appearance: button;
+                -moz-appearance: button;
+                appearance: button;
+                text-decoration: none;
+                padding: 18px 40px;
+                background: #ffb700;
+                outline: none;
+                border: 2px solid #ffb700;
+                font-weight: bold;
+                cursor: pointer;
+                border-radius: 8px;
+                opacity: 70;
+                display: block;
+                width: 400px;
+                margin: 20px;
+                margin-top: 30px;
+                transform: translate(38%, 0%);
+            }
+            a{
+                width: 320px;
+                transform:translate(37%,0%);
+            }
+            a:hover{
+                background: #eb796e;
+            }
+            label{
+                width: 50%;
+                text-align: center;
+            }
+            #centered{
+                width:50%;
+                margin: auto;
+                padding-top: 100px;
+                align-content: center;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>create new jam</h1>
+        <hr color=white width=95%>
+        <div id="centered">
+            <label>select dance</label>
+            <select id="dropbtn", onchange="setVid()", method="GET">
+                <option value="https://www.youtube.com/embed/c6l8oS4K10k">lad's dance</option>
+                <option value="https://www.youtube.com/embed/DcYnwb-hAK0">kolo</option>
+                <option value="https://www.youtube.com/embed/axKOaqhOMU">mwinoghe</option>
+            </select>
+            <a href="https://44e2-128-54-168-208.ngrok.io">create</a>
+        </div>
+        <script>
+            setVid(){
+                var vidSelect=document.getElementById('dropbtn').value;
+                if(vidSelect==1){
+                   localStorage.setItem("vidType","https://www.youtube.com/embed/c6l8oS4K10k");
+                }
+                if(vidSelect==2){
+                   localStorage.setItem("vidType","https://www.youtube.com/embed/DcYnwb-hAK0");
+                }
+                if(vidSelect==3){
+                   localStorage.setItem("vidType","https://www.youtube.com/embed/axKOaqhOMU");
+                }
+                
+            }
+        </script>
+    </body>
